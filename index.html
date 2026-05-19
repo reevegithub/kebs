@@ -149,6 +149,7 @@
         <button class="sb-btn active side-tab" data-view="dashboardView"><span>Dashboard</span><span class="badge">Home</span></button>
         <button class="sb-btn side-tab" data-view="ordersView"><span>Orders Management</span><span class="badge" id="sbOrdersCount">0</span></button>
         <button class="sb-btn side-tab" data-view="aiView"><span>AI Assistant</span><span class="badge">AI</span></button>
+        <button class="sb-btn side-tab" data-view="activityView"><span>Activity Logs</span><span class="badge">Log</span></button>
         <div class="sb-title" style="margin-top:8px;">Quick</div>
         <button id="sbNew" class="sb-btn"><span>New Order</span><span class="badge">Create</span></button>
       </aside>
@@ -188,8 +189,8 @@
             <div class="kpi"><div class="t">Revenue</div><div id="kRevenue" class="v">PHP 0.00</div></div>
             <div class="kpi"><div class="t">Pending Work</div><div id="kPending" class="v">0</div></div>
             <div class="kpi"><div class="t">Paid Orders</div><div id="kPaid" class="v">0</div></div>
-            <div class="kpi"><div class="t">Avg Ticket</div><div id="kAvgTicket" class="v">PHP 0.00</div></div>
-            <div class="kpi"><div class="t">Overdue</div><div id="kOverdue" class="v">0</div></div>
+            <div class="kpi"><div class="t">Paid Total</div><div id="kPaidTotal" class="v">PHP 0.00</div></div>
+            <div class="kpi"><div class="t">Unpaid Total</div><div id="kUnpaidTotal" class="v">PHP 0.00</div></div>
           </div>
           <div class="grid">
             <div class="panel span-3">
@@ -294,6 +295,22 @@
             </div>
           </div>
         </section>
+
+        <section id="activityView" class="view">
+          <div class="panel">
+            <div class="hd">Activity Logs</div>
+            <div class="bd">
+              <div class="table-shell">
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Time</th><th>Action</th><th>Entity</th><th>ID</th><th>Details</th></tr></thead>
+                    <tbody id="activityBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -351,12 +368,12 @@
       'Tarpaulin','Wristlet'
     ];
     const DEFAULT_STATUSES = ['Pending','On Going Production','For Printing','Ready for Pickup','Done'];
-    const ST={apiUrl:localStorage.getItem('storeApiUrl')||'',aiModel:localStorage.getItem('storeAiModel')||'kimi-k2.6:cloud',aiKey:localStorage.getItem('storeAiKey')||'',orders:[],filtered:[],refs:{orderTypes:[],statuses:[]},charts:{},analyticsData:null};
+    const ST={apiUrl:localStorage.getItem('storeApiUrl')||'',aiModel:localStorage.getItem('storeAiModel')||'kimi-k2.6:cloud',aiKey:localStorage.getItem('storeAiKey')||'',orders:[],filtered:[],refs:{orderTypes:[],statuses:[]},charts:{},analyticsData:null,logs:[]};
     const E={apiUrl:apiUrl,aiModel:aiModel,aiKey:aiKey,saveConfig:saveConfig,btnSettings:btnSettings,settingsBar:settingsBar,closeSettings:closeSettings,
       topTime:topTime,sidebar:sidebar,overlay:overlay,sbNew:sbNew,sbOrdersCount:sbOrdersCount,
-      q,fStatus,fType,fPaid,btnNew,btnReport:btnReport,btnCsv:btnCsv,btnPdf:btnPdf,tbody,kTotalOrders,kRevenue,kPending,kPaid,kAvgTicket,kOverdue,pageSize:pageSize,pageInfo:pageInfo,btnFirst:btnFirst,btnPrev:btnPrev,btnNext:btnNext,btnLast:btnLast,trendRange:trendRange,typeTopN:typeTopN,
+      q,fStatus,fType,fPaid,btnNew,btnReport:btnReport,btnCsv:btnCsv,btnPdf:btnPdf,tbody,kTotalOrders,kRevenue,kPending,kPaid,kPaidTotal,kUnpaidTotal,pageSize:pageSize,pageInfo:pageInfo,btnFirst:btnFirst,btnPrev:btnPrev,btnNext:btnNext,btnLast:btnLast,trendRange:trendRange,typeTopN:typeTopN,
       modal,modalTitle,btnCancel,btnSave,chatLog,chatInput,btnAsk,
-      newOrderType:newOrderType,newStatus:newStatus,btnAddOrderType:btnAddOrderType,btnAddStatus:btnAddStatus,orderTypeManager:orderTypeManager,statusManager:statusManager};
+      newOrderType:newOrderType,newStatus:newStatus,btnAddOrderType:btnAddOrderType,btnAddStatus:btnAddStatus,orderTypeManager:orderTypeManager,statusManager:statusManager,activityBody:activityBody};
 
     let isRefreshing = false;
     let lastActivityAt = Date.now();
@@ -447,13 +464,14 @@
       if(!ST.apiUrl || isRefreshing) return;
       isRefreshing = true;
       try{
-        const [listRes,refRes,anaRes]=await Promise.all([callApi('listOrders',{},'GET'),callApi('listReferenceData',{},'GET'),callApi('getAnalytics',{},'GET')]);
+        const [listRes,refRes,anaRes,logRes]=await Promise.all([callApi('listOrders',{},'GET'),callApi('listReferenceData',{},'GET'),callApi('getAnalytics',{},'GET'),callApi('listActivityLogs',{},'GET')]);
         ST.orders=(Array.isArray(listRes.data)?listRes.data:[]).map((o,i)=>({...o,_localId:o.id||`row-${i+1}`}));
         ST.refs=refRes.data||{orderTypes:[],statuses:[]};
+        ST.logs=(logRes&&Array.isArray(logRes.data))?logRes.data:[];
         await seedReferenceDataIfEmpty();
         E.sbOrdersCount.textContent=String(ST.orders.length);
         ST.analyticsData = anaRes.data || {};
-        fillFilters(); renderReferenceManagers(); applyFilters(); renderAnalytics(ST.analyticsData);
+        fillFilters(); renderReferenceManagers(); applyFilters(); renderAnalytics(ST.analyticsData); renderActivityLogs();
         if(!E.chatLog.children.length) addMsg('AI assistant ready. Ask about trends, delays, and priorities.','ai');
       } finally {
         isRefreshing = false;
@@ -584,7 +602,9 @@
       E.tbody.innerHTML=rows.map(o=>`<tr data-rowid="${esc(o._localId)}"><td>${esc(o.orderNumber||'')}</td><td>${esc(fmtDate(o.orderDate))}</td><td>${esc(o.customerName||'')}</td><td>${esc(o.orderType||'')}</td><td>${pill(o.status||'')}</td><td>${esc(fmtDate(o.deadline))}</td><td class="num">PHP ${num(o.totalAmount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${o.paid?'Yes':'No'}</td><td><div class="actions"><button class="i-btn i-edit" title="Edit" data-act="edit">✎</button><button class="i-btn i-receipt" title="Receipt" data-act="receipt">🧾</button><button class="i-btn i-del" title="Delete" data-act="delete">🗑</button></div></td></tr>`).join('');
     }
     function renderAnalytics(a){
-      E.kTotalOrders.textContent=(a.totalOrders||0).toLocaleString(); E.kRevenue.textContent=`PHP ${num(a.totalRevenue).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; E.kPending.textContent=(a.pendingOrders||0).toLocaleString(); E.kPaid.textContent=(a.paidOrders||0).toLocaleString(); E.kAvgTicket.textContent=`PHP ${num(a.avgTicket).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; E.kOverdue.textContent=(a.overdueOrders||0).toLocaleString();
+      const paidTotal = (ST.orders||[]).reduce((sum,o)=>sum + (o.paid ? num(o.totalAmount) : 0), 0);
+      const unpaidTotal = (ST.orders||[]).reduce((sum,o)=>sum + (!o.paid ? num(o.totalAmount) : 0), 0);
+      E.kTotalOrders.textContent=(a.totalOrders||0).toLocaleString(); E.kRevenue.textContent=`PHP ${num(a.totalRevenue).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; E.kPending.textContent=(a.pendingOrders||0).toLocaleString(); E.kPaid.textContent=(a.paidOrders||0).toLocaleString(); E.kPaidTotal.textContent=`PHP ${paidTotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; E.kUnpaidTotal.textContent=`PHP ${unpaidTotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
       const cleanStatus=(a.byStatus||[]).filter(x=>isMeaningfulLabel(x.label));
       const cleanType=(a.byType||[]).filter(x=>isMeaningfulLabel(x.label));
       const trendRange = parseInt(E.trendRange.value || '12', 10);
@@ -596,6 +616,11 @@
       draw('statusChart','doughnut',{labels:cleanStatus.map(x=>x.label),datasets:[{data:cleanStatus.map(x=>num(x.count)),backgroundColor:['#60a5fa','#fbbf24','#a78bfa','#34d399','#fb7185']}]});
       draw('typeChart','bar',{labels:topTypeSeries.map(x=>x.label),datasets:[{label:'Orders',data:topTypeSeries.map(x=>num(x.count)),backgroundColor:'#1f5f99'}]});
       draw('paidChart','pie',{labels:['Paid','Unpaid'],datasets:[{data:[num(a.paidOrders),Math.max(0,num(a.totalOrders)-num(a.paidOrders))],backgroundColor:['#16a34a','#ef4444']}]});
+    }
+    function renderActivityLogs(){
+      const rows=ST.logs||[];
+      if(!rows.length){E.activityBody.innerHTML='<tr><td colspan="5">No activity logs yet.</td></tr>';return;}
+      E.activityBody.innerHTML=rows.map(r=>`<tr><td>${esc(fmtDateTime(r.Timestamp))}</td><td>${esc(r.Action||'')}</td><td>${esc(r.Entity||'')}</td><td>${esc(r.EntityID||'')}</td><td>${esc(r.Details||'')}</td></tr>`).join('');
     }
     function draw(id,type,data){
       if(ST.charts[id]) ST.charts[id].destroy();
@@ -628,7 +653,59 @@
     function editOrderById(id){const r=findOrderByLocalId(id);if(!r)return alert('Order not found.');showBusy('Preparing order editor...');setTimeout(()=>{openModal(r);hideBusy();},120);}
     function printReceiptById(id){const r=findOrderByLocalId(id); if(!r) return alert('Order not found.'); printReceipt(r);}
     async function removeOrderById(id){const row=findOrderByLocalId(id);if(!row){alert('Record not found.');return;} if(!row.id){alert('Cannot delete rows without ID. Please open and save that row first to generate an ID.');return;} if(!confirm('Delete this order?'))return;showBusy('Deleting order...');try{const r=await callApi('deleteOrder',{id:row.id});if(r.status!=='success')return alert(r.message||'Delete failed');await init();}finally{hideBusy();}}
-    async function saveOrder(){const record={id:getv('orderId'),orderDate:getv('orderDate'),customerName:getv('customerName'),contactNo:getv('contactNo'),email:getv('email'),emailLink:getv('emailLink'),orderType:getv('orderType'),orderDetails:getv('orderDetails'),totalAmount:getv('totalAmount'),paid:getv('paid')==='true',deadline:getv('deadline'),status:getv('status'),attachments:getv('attachments')}; if(!record.customerName||!record.orderType) return alert('Customer name and order type are required.'); showBusy(record.id?'Updating order...':'Saving order...'); try{const r=await callApi('upsertOrder',{record}); if(r.status!=='success') return alert(r.message||'Save failed'); E.modal.classList.remove('open'); await init();}finally{hideBusy();}}
+    async function saveOrder(){
+      const record={
+        id:getv('orderId'),
+        orderDate:getv('orderDate'),
+        customerName:getv('customerName'),
+        contactNo:getv('contactNo'),
+        email:getv('email'),
+        emailLink:getv('emailLink'),
+        orderType:getv('orderType'),
+        orderDetails:getv('orderDetails'),
+        totalAmount:getv('totalAmount'),
+        paid:getv('paid')==='true',
+        deadline:getv('deadline'),
+        status:getv('status'),
+        attachments:getv('attachments')
+      };
+      if(!record.customerName||!record.orderType) return alert('Customer name and order type are required.');
+      showBusy(record.id?'Updating order...':'Saving order...');
+      try{
+        const compatRecord = {
+          ...record,
+          CustomerName: record.customerName,
+          ContactNo: record.contactNo,
+          Email: record.email,
+          EmailLink: record.emailLink,
+          OrderType: record.orderType,
+          OrderDetails: record.orderDetails,
+          TotalAmount: record.totalAmount,
+          Paid: record.paid,
+          Deadline: record.deadline,
+          Status: record.status,
+          Attachments: record.attachments,
+          OrderDate: record.orderDate
+        };
+        const upsertPayload = {
+          record: compatRecord,
+          ...compatRecord,
+          id: compatRecord.id,
+          ID: compatRecord.id,
+          customerName: compatRecord.customerName,
+          CustomerName: compatRecord.CustomerName,
+          orderType: compatRecord.orderType,
+          OrderType: compatRecord.OrderType
+        };
+        const r=await callApi('upsertOrder',upsertPayload);
+        if(r.status!=='success'){
+          const extra = r && (r.error || r.details || r.debug) ? `\n${JSON.stringify(r.error||r.details||r.debug)}` : '';
+          return alert((r.message||'Save failed') + extra);
+        }
+        E.modal.classList.remove('open');
+        await init();
+      }finally{hideBusy();}
+    }
     async function askAI(){
       const question=E.chatInput.value.trim();
       if(!question) return;
@@ -687,6 +764,7 @@
     function isMeaningfulLabel(v){const s=String(v||'').trim().toLowerCase();return !!s && s!=='unknown' && s!=='n/a' && s!=='na' && s!=='null' && s!=='undefined';}
     function esc(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
     function num(v){const n=Number(v);return Number.isFinite(n)?n:0} function fmtDate(v){if(!v)return '';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
+    function fmtDateTime(v){if(!v)return '';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
     function iso(v){if(!v)return '';const d=new Date(v);return Number.isNaN(d.getTime())?'':d.toISOString().slice(0,10)} function setv(id,v){document.getElementById(id).value=v||''} function getv(id){return document.getElementById(id).value.trim()}
     function showBusy(text){const o=document.getElementById('busyOverlay');const t=document.getElementById('busyText');if(t)t.textContent=text||'Processing...';if(o)o.classList.add('open')}
     function hideBusy(){const o=document.getElementById('busyOverlay');if(o)o.classList.remove('open')}
