@@ -54,10 +54,16 @@
     .kpi{background:var(--panel);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:12px}
     .kpi .t{font-size:.7rem;font-weight:900;color:var(--muted);text-transform:uppercase}.kpi .v{font-size:1.7rem;font-weight:900;margin-top:4px}
 
-    .grid{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .grid{margin-top:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .span-3{grid-column:span 3}
+    .span-1{grid-column:span 1}
     .panel{background:var(--panel);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
-    .hd{padding:12px 14px;border-bottom:1px solid var(--line);font-weight:900}
+    .hd{padding:10px 12px;border-bottom:1px solid var(--line);font-weight:900;display:flex;align-items:center;justify-content:space-between;gap:8px}
     .bd{padding:12px}
+    .chart-tools{display:flex;gap:8px;align-items:center}
+    .chart-tools select{padding:6px 8px;border-radius:8px;font-size:.8rem;background:#fff}
+    .chart-box-lg{height:320px}
+    .chart-box-sm{height:240px}
 
     .toolbar{display:grid;grid-template-columns:1.3fr .9fr .9fr .9fr auto;gap:10px;margin-bottom:12px}
     .table-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
@@ -120,8 +126,8 @@
     .picker-item{padding:9px 12px;cursor:pointer}
     .picker-item:hover{background:#eef5ff}
 
-    @media (max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.grid{grid-template-columns:1fr}.ai-wrap{grid-template-columns:1fr}.settings-grid{grid-template-columns:1fr 1fr}}
-    @media (max-width:860px){.sidebar{position:fixed;left:0;top:64px;bottom:0;transform:translateX(-100%);transition:.2s;z-index:40}.sidebar.open{transform:translateX(0)}.content{padding:10px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.toolbar{grid-template-columns:1fr 1fr}.settings-grid{grid-template-columns:1fr}.card{max-height:calc(100dvh - 16px);border-radius:14px}.card .b{grid-template-columns:1fr}.top-time{display:none}.pagination{flex-direction:column;align-items:flex-start}.table-actions{flex-direction:column}}
+    @media (max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.grid{grid-template-columns:1fr}.span-3,.span-1{grid-column:span 1}.ai-wrap{grid-template-columns:1fr}.settings-grid{grid-template-columns:1fr 1fr}.chart-box-lg{height:280px}.chart-box-sm{height:210px}}
+    @media (max-width:860px){.sidebar{position:fixed;left:0;top:64px;bottom:0;transform:translateX(-100%);transition:.2s;z-index:40}.sidebar.open{transform:translateX(0)}.content{padding:10px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.toolbar{grid-template-columns:1fr 1fr}.settings-grid{grid-template-columns:1fr}.card{max-height:calc(100dvh - 16px);border-radius:14px}.card .b{grid-template-columns:1fr}.top-time{display:none}.pagination{flex-direction:column;align-items:flex-start}.table-actions{flex-direction:column}.chart-box-lg{height:230px}.chart-box-sm{height:200px}}
   </style>
 </head>
 <body>
@@ -186,10 +192,35 @@
             <div class="kpi"><div class="t">Overdue</div><div id="kOverdue" class="v">0</div></div>
           </div>
           <div class="grid">
-            <div class="panel"><div class="hd">Revenue Trend</div><div class="bd"><canvas id="revenueChart" height="90"></canvas></div></div>
-            <div class="panel"><div class="hd">Status Breakdown</div><div class="bd"><canvas id="statusChart" height="90"></canvas></div></div>
-            <div class="panel"><div class="hd">Top Order Types</div><div class="bd"><canvas id="typeChart" height="90"></canvas></div></div>
-            <div class="panel"><div class="hd">Paid vs Unpaid</div><div class="bd"><canvas id="paidChart" height="90"></canvas></div></div>
+            <div class="panel span-3">
+              <div class="hd">
+                <span>Revenue Trend</span>
+                <div class="chart-tools">
+                  <select id="trendRange">
+                    <option value="3">Last 3 months</option>
+                    <option value="6">Last 6 months</option>
+                    <option value="12" selected>Last 12 months</option>
+                    <option value="0">All months</option>
+                  </select>
+                </div>
+              </div>
+              <div class="bd"><div class="chart-box-lg"><canvas id="revenueChart"></canvas></div></div>
+            </div>
+            <div class="panel span-1"><div class="hd">Status Breakdown</div><div class="bd"><div class="chart-box-sm"><canvas id="statusChart"></canvas></div></div></div>
+            <div class="panel span-3">
+              <div class="hd">
+                <span>Top Order Types</span>
+                <div class="chart-tools">
+                  <select id="typeTopN">
+                    <option value="5">Top 5</option>
+                    <option value="8" selected>Top 8</option>
+                    <option value="12">Top 12</option>
+                  </select>
+                </div>
+              </div>
+              <div class="bd"><div class="chart-box-lg"><canvas id="typeChart"></canvas></div></div>
+            </div>
+            <div class="panel span-1"><div class="hd">Paid vs Unpaid</div><div class="bd"><div class="chart-box-sm"><canvas id="paidChart"></canvas></div></div></div>
           </div>
         </section>
 
@@ -320,10 +351,10 @@
       'Tarpaulin','Wristlet'
     ];
     const DEFAULT_STATUSES = ['Pending','On Going Production','For Printing','Ready for Pickup','Done'];
-    const ST={apiUrl:localStorage.getItem('storeApiUrl')||'',aiModel:localStorage.getItem('storeAiModel')||'kimi-k2.6:cloud',aiKey:localStorage.getItem('storeAiKey')||'',orders:[],filtered:[],refs:{orderTypes:[],statuses:[]},charts:{}};
+    const ST={apiUrl:localStorage.getItem('storeApiUrl')||'',aiModel:localStorage.getItem('storeAiModel')||'kimi-k2.6:cloud',aiKey:localStorage.getItem('storeAiKey')||'',orders:[],filtered:[],refs:{orderTypes:[],statuses:[]},charts:{},analyticsData:null};
     const E={apiUrl:apiUrl,aiModel:aiModel,aiKey:aiKey,saveConfig:saveConfig,btnSettings:btnSettings,settingsBar:settingsBar,closeSettings:closeSettings,
       topTime:topTime,sidebar:sidebar,overlay:overlay,sbNew:sbNew,sbOrdersCount:sbOrdersCount,
-      q,fStatus,fType,fPaid,btnNew,btnReport:btnReport,btnCsv:btnCsv,btnPdf:btnPdf,tbody,kTotalOrders,kRevenue,kPending,kPaid,kAvgTicket,kOverdue,pageSize:pageSize,pageInfo:pageInfo,btnFirst:btnFirst,btnPrev:btnPrev,btnNext:btnNext,btnLast:btnLast,
+      q,fStatus,fType,fPaid,btnNew,btnReport:btnReport,btnCsv:btnCsv,btnPdf:btnPdf,tbody,kTotalOrders,kRevenue,kPending,kPaid,kAvgTicket,kOverdue,pageSize:pageSize,pageInfo:pageInfo,btnFirst:btnFirst,btnPrev:btnPrev,btnNext:btnNext,btnLast:btnLast,trendRange:trendRange,typeTopN:typeTopN,
       modal,modalTitle,btnCancel,btnSave,chatLog,chatInput,btnAsk,
       newOrderType:newOrderType,newStatus:newStatus,btnAddOrderType:btnAddOrderType,btnAddStatus:btnAddStatus,orderTypeManager:orderTypeManager,statusManager:statusManager};
 
@@ -347,6 +378,8 @@
     E.btnReport.onclick=generateReport;
     E.btnCsv.onclick=exportCsv;
     E.btnPdf.onclick=exportPdf;
+    E.trendRange.onchange=()=>renderAnalytics(ST.analyticsData||{});
+    E.typeTopN.onchange=()=>renderAnalytics(ST.analyticsData||{});
     E.pageSize.onchange=()=>{currentPage=1;renderTable();};
     E.btnFirst.onclick=()=>{currentPage=1;renderTable();};
     E.btnPrev.onclick=()=>{currentPage=Math.max(1,currentPage-1);renderTable();};
@@ -367,7 +400,19 @@
       document.addEventListener(evt,()=>{ lastActivityAt = Date.now(); },{passive:true});
     });
 
-    async function callApi(action,payload={},method='POST'){if(!ST.apiUrl) throw new Error('Set Apps Script URL first.'); if(method==='GET'){const qs=new URLSearchParams({action,...payload}); return (await fetch(`${ST.apiUrl}?${qs.toString()}`)).json();} return (await fetch(ST.apiUrl,{method:'POST',body:JSON.stringify({action,...payload})})).json();}
+    async function callApi(action,payload={},method='POST'){
+      if(!ST.apiUrl) throw new Error('Set Apps Script URL first.');
+      if(method==='GET'){
+        const qs=new URLSearchParams({action,...payload,_t:String(Date.now())});
+        return (await fetch(`${ST.apiUrl}?${qs.toString()}`,{cache:'no-store'})).json();
+      }
+      return (await fetch(ST.apiUrl,{
+        method:'POST',
+        cache:'no-store',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action,...payload,_t:Date.now()})
+      })).json();
+    }
     async function init(){
       if(!ST.apiUrl || isRefreshing) return;
       isRefreshing = true;
@@ -377,7 +422,8 @@
         ST.refs=refRes.data||{orderTypes:[],statuses:[]};
         await seedReferenceDataIfEmpty();
         E.sbOrdersCount.textContent=String(ST.orders.length);
-        fillFilters(); renderReferenceManagers(); applyFilters(); renderAnalytics(anaRes.data||{});
+        ST.analyticsData = anaRes.data || {};
+        fillFilters(); renderReferenceManagers(); applyFilters(); renderAnalytics(ST.analyticsData);
         if(!E.chatLog.children.length) addMsg('AI assistant ready. Ask about trends, delays, and priorities.','ai');
       } finally {
         isRefreshing = false;
@@ -475,6 +521,7 @@
     }
     function printReceipt(r){
       if(!r) return alert('No order selected for receipt.');
+      const logoSrc = new URL('kebs.jpg', window.location.href).href;
       const html = `<!doctype html><html><head><title>Receipt</title><style>
       body{font-family:Inter,Arial,sans-serif;background:#f6f8fc;padding:22px}
       .sheet{max-width:760px;margin:auto;background:#fff;border:1px solid #d7e2f0;border-radius:14px;overflow:hidden}
@@ -487,8 +534,9 @@
       .k{width:120px;font-weight:800;color:#475569}.v{font-weight:600;color:#0f172a}
       .full{grid-column:1/-1}
       .foot{padding:12px 18px;background:#f8fbff;color:#475569;font-size:12px;border-top:1px solid #e2e8f0}
+      @page{size:auto;margin:12mm}
       @media print{body{background:#fff;padding:0}.sheet{border:none;border-radius:0;max-width:none}}
-      </style></head><body><div class="sheet"><div class="head"><div class="brand"><img src="kebs.jpg" alt="logo"><div><div class="name">Keb's Enterprise</div><div class="tag">Printing Services</div></div></div><div>${esc(new Date().toLocaleDateString())}</div></div><div class="body"><h2 class="title">Official Receipt</h2><div class="grid"><div class="row"><span class="k">Order #</span><span class="v">${esc(r.orderNumber||'')}</span></div><div class="row"><span class="k">Order Date</span><span class="v">${esc(fmtDate(r.orderDate)||'')}</span></div><div class="row"><span class="k">Customer</span><span class="v">${esc(r.customerName||'')}</span></div><div class="row"><span class="k">Type</span><span class="v">${esc(r.orderType||'')}</span></div><div class="row"><span class="k">Status</span><span class="v">${esc(r.status||'')}</span></div><div class="row"><span class="k">Paid</span><span class="v">${r.paid?'Yes':'No'}</span></div><div class="row full"><span class="k">Amount</span><span class="v">PHP ${num(r.totalAmount).toFixed(2)}</span></div><div class="row full"><span class="k">Details</span><span class="v">${esc(r.orderDetails||'')}</span></div></div></div><div class="foot">Generated ${new Date().toLocaleString()}</div></div><script>window.print();<\/script></body></html>`;
+      </style></head><body><div class="sheet"><div class="head"><div class="brand"><img id="receiptLogo" src="${logoSrc}" alt="logo" onerror="this.style.display='none'"><div><div class="name">Keb's Enterprise</div><div class="tag">Printing Services</div></div></div><div>${esc(new Date().toLocaleDateString())}</div></div><div class="body"><h2 class="title">Official Receipt</h2><div class="grid"><div class="row"><span class="k">Order #</span><span class="v">${esc(r.orderNumber||'')}</span></div><div class="row"><span class="k">Order Date</span><span class="v">${esc(fmtDate(r.orderDate)||'')}</span></div><div class="row"><span class="k">Customer</span><span class="v">${esc(r.customerName||'')}</span></div><div class="row"><span class="k">Type</span><span class="v">${esc(r.orderType||'')}</span></div><div class="row"><span class="k">Status</span><span class="v">${esc(r.status||'')}</span></div><div class="row"><span class="k">Paid</span><span class="v">${r.paid?'Yes':'No'}</span></div><div class="row full"><span class="k">Amount</span><span class="v">PHP ${num(r.totalAmount).toFixed(2)}</span></div><div class="row full"><span class="k">Details</span><span class="v">${esc(r.orderDetails||'')}</span></div></div></div><div class="foot">Generated ${new Date().toLocaleString()}</div></div><script>(function(){var done=false;function printNow(){if(done)return;done=true;setTimeout(function(){window.print();},120);}var logo=document.getElementById('receiptLogo');if(!logo||logo.complete){printNow();}else{logo.onload=printNow;logo.onerror=printNow;setTimeout(printNow,1500);}})();<\/script></body></html>`;
       const w = window.open('', '_blank'); if(!w) return alert('Popup blocked.');
       w.document.write(html); w.document.close();
     }
@@ -503,23 +551,53 @@
       E.pageInfo.textContent=`Page ${currentPage} / ${totalPages} (${ST.filtered.length} rows)`;
       E.btnFirst.disabled=currentPage<=1; E.btnPrev.disabled=currentPage<=1; E.btnNext.disabled=currentPage>=totalPages; E.btnLast.disabled=currentPage>=totalPages;
       if(!rows.length){E.tbody.innerHTML='<tr><td colspan="9">No records found.</td></tr>';return;}
-      E.tbody.innerHTML=rows.map(o=>`<tr><td>${esc(o.orderNumber||'')}</td><td>${esc(fmtDate(o.orderDate))}</td><td>${esc(o.customerName||'')}</td><td>${esc(o.orderType||'')}</td><td>${pill(o.status||'')}</td><td>${esc(fmtDate(o.deadline))}</td><td class="num">PHP ${num(o.totalAmount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${o.paid?'Yes':'No'}</td><td><div class="actions"><button class="i-btn i-edit" title="Edit" onclick="editOrder('${esc(o._localId)}')">✎</button><button class="i-btn i-receipt" title="Receipt" onclick="printReceiptById('${esc(o._localId)}')">🧾</button><button class="i-btn i-del" title="Delete" onclick="removeOrder('${esc(o._localId)}')">🗑</button></div></td></tr>`).join('');
+      E.tbody.innerHTML=rows.map(o=>`<tr data-rowid="${esc(o._localId)}"><td>${esc(o.orderNumber||'')}</td><td>${esc(fmtDate(o.orderDate))}</td><td>${esc(o.customerName||'')}</td><td>${esc(o.orderType||'')}</td><td>${pill(o.status||'')}</td><td>${esc(fmtDate(o.deadline))}</td><td class="num">PHP ${num(o.totalAmount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${o.paid?'Yes':'No'}</td><td><div class="actions"><button class="i-btn i-edit" title="Edit" data-act="edit">✎</button><button class="i-btn i-receipt" title="Receipt" data-act="receipt">🧾</button><button class="i-btn i-del" title="Delete" data-act="delete">🗑</button></div></td></tr>`).join('');
     }
     function renderAnalytics(a){
       E.kTotalOrders.textContent=(a.totalOrders||0).toLocaleString(); E.kRevenue.textContent=`PHP ${num(a.totalRevenue).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; E.kPending.textContent=(a.pendingOrders||0).toLocaleString(); E.kPaid.textContent=(a.paidOrders||0).toLocaleString(); E.kAvgTicket.textContent=`PHP ${num(a.avgTicket).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; E.kOverdue.textContent=(a.overdueOrders||0).toLocaleString();
       const cleanStatus=(a.byStatus||[]).filter(x=>isMeaningfulLabel(x.label));
       const cleanType=(a.byType||[]).filter(x=>isMeaningfulLabel(x.label));
-      draw('revenueChart','line',{labels:(a.monthlyRevenue||[]).map(x=>x.month),datasets:[{label:'Revenue',data:(a.monthlyRevenue||[]).map(x=>num(x.revenue)),borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.14)',fill:true,tension:.35}]});
+      const trendRange = parseInt(E.trendRange.value || '12', 10);
+      const trendSeriesRaw = a.monthlyRevenue || [];
+      const trendSeries = trendRange > 0 ? trendSeriesRaw.slice(-trendRange) : trendSeriesRaw;
+      const topN = Math.max(1, parseInt(E.typeTopN.value || '8', 10));
+      const topTypeSeries = cleanType.slice(0, topN);
+      draw('revenueChart','line',{labels:trendSeries.map(x=>x.month),datasets:[{label:'Revenue',data:trendSeries.map(x=>num(x.revenue)),borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.14)',fill:true,tension:.35}]});
       draw('statusChart','doughnut',{labels:cleanStatus.map(x=>x.label),datasets:[{data:cleanStatus.map(x=>num(x.count)),backgroundColor:['#60a5fa','#fbbf24','#a78bfa','#34d399','#fb7185']}]});
-      draw('typeChart','bar',{labels:cleanType.map(x=>x.label),datasets:[{label:'Orders',data:cleanType.map(x=>num(x.count)),backgroundColor:'#1f5f99'}]});
+      draw('typeChart','bar',{labels:topTypeSeries.map(x=>x.label),datasets:[{label:'Orders',data:topTypeSeries.map(x=>num(x.count)),backgroundColor:'#1f5f99'}]});
       draw('paidChart','pie',{labels:['Paid','Unpaid'],datasets:[{data:[num(a.paidOrders),Math.max(0,num(a.totalOrders)-num(a.paidOrders))],backgroundColor:['#16a34a','#ef4444']}]});
     }
-    function draw(id,type,data){if(ST.charts[id]) ST.charts[id].destroy(); ST.charts[id]=new Chart(document.getElementById(id),{type,data,options:{responsive:true,maintainAspectRatio:true,aspectRatio:2.3,plugins:{legend:{position:'bottom'}},radius:type==='doughnut'||type==='pie'?'78%':undefined,cutout:type==='doughnut'?'64%':undefined}})}
+    function draw(id,type,data){
+      if(ST.charts[id]) ST.charts[id].destroy();
+      const isDonut = type==='doughnut'||type==='pie';
+      ST.charts[id]=new Chart(document.getElementById(id),{
+        type,
+        data,
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom'}},
+          scales: isDonut ? undefined : {
+            y: {
+              beginAtZero: true,
+              grace: '8%',
+              ticks: { precision: 0 }
+            },
+            x: {
+              ticks: { maxRotation: 0, autoSkip: true }
+            }
+          },
+          radius:isDonut?'68%':undefined,
+          cutout:type==='doughnut'?'62%':undefined
+        }
+      });
+    }
 
     function openModal(r=null){E.modalTitle.textContent=r?`Edit ${r.orderNumber||''}`:'New Order';setv('orderId',r?.id||'');setv('orderDate',iso(r?.orderDate));setv('customerName',r?.customerName||'');setv('contactNo',r?.contactNo||'');setv('email',r?.email||'');setv('emailLink',r?.emailLink||'');setv('orderType',r?.orderType||'');setv('status',r?.status||'Pending');setv('totalAmount',r?.totalAmount||'');setv('deadline',iso(r?.deadline));setv('paid',String(Boolean(r?.paid)));setv('attachments',r?.attachments||'');setv('orderDetails',r?.orderDetails||'');syncPickerButton('orderType');syncPickerButton('status');E.modal.classList.add('open');}
-    window.editOrder=id=>{const r=ST.orders.find(x=>String(x._localId)===String(id));if(!r)return;showBusy('Preparing order editor...');setTimeout(()=>{openModal(r);hideBusy();},120);};
-    window.printReceiptById=id=>{const r=ST.orders.find(x=>String(x._localId)===String(id)); if(!r) return alert('Order not found.'); printReceipt(r);};
-    window.removeOrder=async id=>{const row=ST.orders.find(x=>String(x._localId)===String(id));if(!row){alert('Record not found.');return;} if(!row.id){alert('Cannot delete rows without ID. Please open and save that row first to generate an ID.');return;} if(!confirm('Delete this order?'))return;showBusy('Deleting order...');try{const r=await callApi('deleteOrder',{id:row.id});if(r.status!=='success')return alert(r.message||'Delete failed');await init();}finally{hideBusy();}};
+    function findOrderByLocalId(id){ return ST.orders.find(x=>String(x._localId)===String(id)); }
+    function editOrderById(id){const r=findOrderByLocalId(id);if(!r)return alert('Order not found.');showBusy('Preparing order editor...');setTimeout(()=>{openModal(r);hideBusy();},120);}
+    function printReceiptById(id){const r=findOrderByLocalId(id); if(!r) return alert('Order not found.'); printReceipt(r);}
+    async function removeOrderById(id){const row=findOrderByLocalId(id);if(!row){alert('Record not found.');return;} if(!row.id){alert('Cannot delete rows without ID. Please open and save that row first to generate an ID.');return;} if(!confirm('Delete this order?'))return;showBusy('Deleting order...');try{const r=await callApi('deleteOrder',{id:row.id});if(r.status!=='success')return alert(r.message||'Delete failed');await init();}finally{hideBusy();}}
     async function saveOrder(){const record={id:getv('orderId'),orderDate:getv('orderDate'),customerName:getv('customerName'),contactNo:getv('contactNo'),email:getv('email'),emailLink:getv('emailLink'),orderType:getv('orderType'),orderDetails:getv('orderDetails'),totalAmount:getv('totalAmount'),paid:getv('paid')==='true',deadline:getv('deadline'),status:getv('status'),attachments:getv('attachments')}; if(!record.customerName||!record.orderType) return alert('Customer name and order type are required.'); showBusy(record.id?'Updating order...':'Saving order...'); try{const r=await callApi('upsertOrder',{record}); if(r.status!=='success') return alert(r.message||'Save failed'); E.modal.classList.remove('open'); await init();}finally{hideBusy();}}
     async function askAI(){const question=E.chatInput.value.trim(); if(!question) return; addMsg(question,'user'); E.chatInput.value=''; addMsg('Analyzing your data...','ai'); try{const r=await callApi('askAI',{question,model:ST.aiModel,apiKey:ST.aiKey}); E.chatLog.removeChild(E.chatLog.lastChild); if(r.status!=='success') return addMsg(`AI error: ${r.message||'Request failed'}`,'ai'); addMsg(r.answer||'No response.','ai');}catch(err){E.chatLog.removeChild(E.chatLog.lastChild); addMsg(`Error: ${err.message}`,'ai');}}
     function addMsg(t,w){
@@ -605,6 +683,17 @@
     });
     document.addEventListener('click',(e)=>{
       document.querySelectorAll('.picker.open').forEach(p=>{ if(!p.contains(e.target)) p.classList.remove('open'); });
+    });
+    E.tbody.addEventListener('click', async (e)=>{
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      const tr = btn.closest('tr[data-rowid]');
+      if (!tr) return;
+      const id = tr.getAttribute('data-rowid');
+      const act = btn.getAttribute('data-act');
+      if (act === 'edit') return editOrderById(id);
+      if (act === 'receipt') return printReceiptById(id);
+      if (act === 'delete') return removeOrderById(id);
     });
 
     setInterval(()=>{
