@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -11,12 +11,12 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     :root {
-      --bg:#dbe8f3; --panel:rgba(255,255,255,.78); --line:#d4deea; --ink:#0f1f37; --muted:#64748b;
-      --brand:#003e7a; --brand2:#1f5f99; --ok:#16a34a; --warn:#d97706; --danger:#dc2626;
+      --bg:#e8eef6; --panel:#ffffff; --line:#d5dfeb; --ink:#0f1f37; --muted:#64748b;
+      --brand:#0b4a8b; --brand2:#1f5f99; --ok:#16a34a; --warn:#d97706; --danger:#dc2626;
       --shadow:0 10px 28px rgba(15,23,42,.08); --radius:16px;
     }
     *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0;font-family:Inter,sans-serif;color:var(--ink);background:linear-gradient(180deg,#cfe0ef 0,var(--bg) 280px)}
+    body{margin:0;font-family:Inter,sans-serif;color:var(--ink);background:linear-gradient(180deg,#d8e4f1 0,var(--bg) 260px)}
     .app{height:100%;display:flex;flex-direction:column;overflow:hidden}
 
     .top{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.85);backdrop-filter:blur(8px)}
@@ -59,16 +59,16 @@
     .hd{padding:12px 14px;border-bottom:1px solid var(--line);font-weight:900}
     .bd{padding:12px}
 
-    .toolbar{display:grid;grid-template-columns:1.3fr .8fr .8fr .8fr auto;gap:8px;margin-bottom:10px}
-    .table-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+    .toolbar{display:grid;grid-template-columns:1.3fr .9fr .9fr .9fr auto;gap:10px;margin-bottom:12px}
+    .table-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
     input,select,textarea{border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
-    .table-shell{border:1px solid #d9e5f2;border-radius:12px;overflow:hidden;background:#fff}
+    .table-shell{border:1px solid #d1dced;border-radius:12px;overflow:hidden;background:#fff}
     .table-wrap{overflow:auto;max-height:58vh}
     table{width:100%;border-collapse:collapse;font-size:.88rem}
-    th,td{padding:10px 10px;border-bottom:1px solid #e9eff6;text-align:left;white-space:nowrap}
-    th{font-size:.73rem;color:#5b6f8d;text-transform:uppercase;background:#f7faff;position:sticky;top:0;z-index:2}
-    tbody tr:nth-child(even){background:#fbfdff}
-    tbody tr:hover{background:#eef5ff}
+    th,td{padding:12px 10px;border-bottom:1px solid #e7edf6;text-align:left;white-space:nowrap}
+    th{font-size:.72rem;color:#4b6286;text-transform:uppercase;background:#f3f7fd;position:sticky;top:0;z-index:2;letter-spacing:.02em}
+    tbody tr:nth-child(even){background:#fcfdff}
+    tbody tr:hover{background:#edf4ff}
     .num{text-align:right}
     .pagination{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0 2px}
     .pagination .left,.pagination .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -77,13 +77,12 @@
     .pager-info{font-size:.8rem;font-weight:700;color:#64748b}
     .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:.7rem;font-weight:800}
     .p-pending{background:#fef3c7;color:#92400e}.p-progress{background:#dbeafe;color:#1e40af}.p-ready{background:#ede9fe;color:#5b21b6}.p-done{background:#dcfce7;color:#166534}
-    .action-wrap{position:relative;display:inline-block}
-    .action-toggle{width:30px;height:30px;border:1px solid #c8d7e9;background:#fff;border-radius:8px;cursor:pointer;font-weight:900;color:#334155}
-    .action-toggle::-webkit-details-marker{display:none}
-    .action-menu{position:absolute;right:0;top:34px;min-width:130px;background:#fff;border:1px solid #d8e3f1;border-radius:10px;box-shadow:0 10px 18px rgba(15,23,42,.15);padding:4px;display:grid;gap:2px;z-index:15}
-    .action-item{border:none;background:transparent;text-align:left;padding:7px 8px;border-radius:7px;cursor:pointer;font-size:.82rem;font-weight:700;color:#334155}
-    .action-item:hover{background:#eff6ff}
-    .action-item.danger{color:#b91c1c}
+    .actions{display:flex;gap:6px;align-items:center}
+    .i-btn{width:30px;height:30px;border:1px solid #c9d7e9;background:#fff;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;line-height:1}
+    .i-btn:hover{background:#eef5ff}
+    .i-edit{color:#0b4a8b}
+    .i-receipt{color:#155e75}
+    .i-del{color:#b91c1c}
 
     .ai-wrap{display:grid;grid-template-columns:1fr 300px;gap:12px}
     .chat{height:520px;overflow:auto;background:#f8fbff;border:1px solid #dce6f3;border-radius:10px;padding:10px}
@@ -497,7 +496,7 @@
       E.pageInfo.textContent=`Page ${currentPage} / ${totalPages} (${ST.filtered.length} rows)`;
       E.btnFirst.disabled=currentPage<=1; E.btnPrev.disabled=currentPage<=1; E.btnNext.disabled=currentPage>=totalPages; E.btnLast.disabled=currentPage>=totalPages;
       if(!rows.length){E.tbody.innerHTML='<tr><td colspan="9">No records found.</td></tr>';return;}
-      E.tbody.innerHTML=rows.map(o=>`<tr><td>${esc(o.orderNumber||'')}</td><td>${esc(fmtDate(o.orderDate))}</td><td>${esc(o.customerName||'')}</td><td>${esc(o.orderType||'')}</td><td>${pill(o.status||'')}</td><td>${esc(fmtDate(o.deadline))}</td><td class="num">PHP ${num(o.totalAmount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${o.paid?'Yes':'No'}</td><td><details class="action-wrap"><summary class="action-toggle">⋯</summary><div class="action-menu"><button class="action-item" onclick="editOrder('${esc(o._localId)}')">Edit</button><button class="action-item" onclick="printReceiptById('${esc(o._localId)}')">Receipt</button><button class="action-item danger" onclick="removeOrder('${esc(o._localId)}')">Delete</button></div></details></td></tr>`).join('');
+      E.tbody.innerHTML=rows.map(o=>`<tr><td>${esc(o.orderNumber||'')}</td><td>${esc(fmtDate(o.orderDate))}</td><td>${esc(o.customerName||'')}</td><td>${esc(o.orderType||'')}</td><td>${pill(o.status||'')}</td><td>${esc(fmtDate(o.deadline))}</td><td class="num">PHP ${num(o.totalAmount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${o.paid?'Yes':'No'}</td><td><div class="actions"><button class="i-btn i-edit" title="Edit" onclick="editOrder('${esc(o._localId)}')">✎</button><button class="i-btn i-receipt" title="Receipt" onclick="printReceiptById('${esc(o._localId)}')">🧾</button><button class="i-btn i-del" title="Delete" onclick="removeOrder('${esc(o._localId)}')">🗑</button></div></td></tr>`).join('');
     }
     function renderAnalytics(a){
       E.kTotalOrders.textContent=(a.totalOrders||0).toLocaleString(); E.kRevenue.textContent=`PHP ${num(a.totalRevenue).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; E.kPending.textContent=(a.pendingOrders||0).toLocaleString(); E.kPaid.textContent=(a.paidOrders||0).toLocaleString(); E.kAvgTicket.textContent=`PHP ${num(a.avgTicket).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`; E.kOverdue.textContent=(a.overdueOrders||0).toLocaleString();
