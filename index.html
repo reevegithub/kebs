@@ -400,18 +400,48 @@
       document.addEventListener(evt,()=>{ lastActivityAt = Date.now(); },{passive:true});
     });
 
+    function buildFetchError_(err, action){
+      const base = (err && err.message) ? String(err.message) : 'Unknown network error';
+      if (/Failed to fetch|NetworkError|Load failed/i.test(base)) {
+        const target = ST.apiUrl || '(missing URL)';
+        return `Network error while calling "${action}". Check Settings > Apps Script Web App URL, redeploy script as Web App (Anyone with link), and confirm internet access. Target: ${target}`;
+      }
+      return base;
+    }
     async function callApi(action,payload={},method='POST'){
       if(!ST.apiUrl) throw new Error('Set Apps Script URL first.');
       if(method==='GET'){
         const qs=new URLSearchParams({action,...payload,_t:String(Date.now())});
-        return (await fetch(`${ST.apiUrl}?${qs.toString()}`,{cache:'no-store'})).json();
+        try{
+          return (await fetch(`${ST.apiUrl}?${qs.toString()}`,{cache:'no-store'})).json();
+        } catch (err) {
+          throw new Error(buildFetchError_(err, action));
+        }
       }
-      return (await fetch(ST.apiUrl,{
-        method:'POST',
-        cache:'no-store',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action,...payload,_t:Date.now()})
-      })).json();
+      try{
+        return (await fetch(ST.apiUrl,{
+          method:'POST',
+          cache:'no-store',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({action,...payload,_t:Date.now()})
+        })).json();
+      } catch (err) {
+        // Fallback for environments that reject JSON POST from file:// origins.
+        const form = new URLSearchParams({action,_t:String(Date.now())});
+        Object.entries(payload||{}).forEach(([k,v])=>{
+          form.set(k, typeof v === 'string' ? v : JSON.stringify(v));
+        });
+        try{
+          return (await fetch(ST.apiUrl,{
+            method:'POST',
+            cache:'no-store',
+            headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+            body:form.toString()
+          })).json();
+        } catch (err2) {
+          throw new Error(buildFetchError_(err2, action));
+        }
+      }
     }
     async function init(){
       if(!ST.apiUrl || isRefreshing) return;
@@ -599,7 +629,22 @@
     function printReceiptById(id){const r=findOrderByLocalId(id); if(!r) return alert('Order not found.'); printReceipt(r);}
     async function removeOrderById(id){const row=findOrderByLocalId(id);if(!row){alert('Record not found.');return;} if(!row.id){alert('Cannot delete rows without ID. Please open and save that row first to generate an ID.');return;} if(!confirm('Delete this order?'))return;showBusy('Deleting order...');try{const r=await callApi('deleteOrder',{id:row.id});if(r.status!=='success')return alert(r.message||'Delete failed');await init();}finally{hideBusy();}}
     async function saveOrder(){const record={id:getv('orderId'),orderDate:getv('orderDate'),customerName:getv('customerName'),contactNo:getv('contactNo'),email:getv('email'),emailLink:getv('emailLink'),orderType:getv('orderType'),orderDetails:getv('orderDetails'),totalAmount:getv('totalAmount'),paid:getv('paid')==='true',deadline:getv('deadline'),status:getv('status'),attachments:getv('attachments')}; if(!record.customerName||!record.orderType) return alert('Customer name and order type are required.'); showBusy(record.id?'Updating order...':'Saving order...'); try{const r=await callApi('upsertOrder',{record}); if(r.status!=='success') return alert(r.message||'Save failed'); E.modal.classList.remove('open'); await init();}finally{hideBusy();}}
-    async function askAI(){const question=E.chatInput.value.trim(); if(!question) return; addMsg(question,'user'); E.chatInput.value=''; addMsg('Analyzing your data...','ai'); try{const r=await callApi('askAI',{question,model:ST.aiModel,apiKey:ST.aiKey}); E.chatLog.removeChild(E.chatLog.lastChild); if(r.status!=='success') return addMsg(`AI error: ${r.message||'Request failed'}`,'ai'); addMsg(r.answer||'No response.','ai');}catch(err){E.chatLog.removeChild(E.chatLog.lastChild); addMsg(`Error: ${err.message}`,'ai');}}
+    async function askAI(){
+      const question=E.chatInput.value.trim();
+      if(!question) return;
+      addMsg(question,'user');
+      E.chatInput.value='';
+      addMsg('Analyzing your data...','ai');
+      try{
+        const r=await callApi('askAI',{question,model:ST.aiModel,apiKey:ST.aiKey});
+        E.chatLog.removeChild(E.chatLog.lastChild);
+        if(r.status!=='success') return addMsg(`AI error: ${r.message||'Request failed'}`,'ai');
+        addMsg(r.answer||'No response.','ai');
+      }catch(err){
+        E.chatLog.removeChild(E.chatLog.lastChild);
+        addMsg(`Error: ${err.message}`, 'ai');
+      }
+    }
     function addMsg(t,w){
       const d=document.createElement('div');
       d.className=`bubble ${w}`;
