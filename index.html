@@ -85,20 +85,27 @@
     .i-del{color:#b91c1c}
 
     .ai-wrap{display:grid;grid-template-columns:1fr 300px;gap:12px}
-    .chat{height:520px;overflow:auto;background:#f8fbff;border:1px solid #dce6f3;border-radius:10px;padding:10px}
-    .bubble{max-width:90%;padding:10px 12px;border-radius:10px;margin-bottom:8px;line-height:1.45}.user{margin-left:auto;background:var(--brand);color:#fff}.ai{background:#fff;border:1px solid #d9e2f0}
+    .chat{height:520px;overflow:auto;background:#f8fbff;border:1px solid #dce6f3;border-radius:10px;padding:12px}
+    .bubble{max-width:92%;padding:11px 13px;border-radius:12px;margin-bottom:10px;line-height:1.5;word-break:break-word}
+    .user{margin-left:auto;background:var(--brand);color:#fff;font-weight:600}
+    .ai{background:#fff;border:1px solid #d9e2f0;color:#1e293b}
+    .ai .ai-title{font-size:.76rem;font-weight:900;letter-spacing:.03em;text-transform:uppercase;color:#64748b;margin-bottom:6px}
+    .ai .ai-body{font-size:1.01rem}
+    .ai .ai-body ul{margin:8px 0 0 18px;padding:0}
+    .ai .ai-body li{margin:5px 0}
+    .ai .ai-body b{color:#0f172a}
 
-    .modal{position:fixed;inset:0;background:rgba(8,16,32,.62);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}.modal.open{display:flex}
+    .modal{position:fixed;inset:0;background:rgba(8,16,32,.62);display:none;align-items:flex-start;justify-content:center;padding:14px;overflow:auto;z-index:50}.modal.open{display:flex}
     .busy{position:fixed;inset:0;background:rgba(8,16,32,.52);display:none;align-items:center;justify-content:center;z-index:120}
     .busy.open{display:flex}
     .busy-card{background:#fff;border:1px solid #d9e5f2;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 18px 40px rgba(2,12,28,.3)}
     .spinner{width:20px;height:20px;border:3px solid #dbe8f6;border-top-color:#1d4ed8;border-radius:50%;animation:spin .9s linear infinite}
     .busy-text{font-weight:800;color:#1e293b}
     @keyframes spin{to{transform:rotate(360deg)}}
-    .card{width:100%;max-width:980px;max-height:90vh;background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 18px 45px rgba(2,12,28,.26)}
+    .card{width:min(980px,100%);max-height:calc(100dvh - 28px);background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 18px 45px rgba(2,12,28,.26);display:flex;flex-direction:column;margin:auto 0}
     .card .h{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:900;font-size:1.35rem;background:linear-gradient(180deg,#f8fbff 0,#f2f7fd 100%)}
-    .card .b{padding:16px 18px;display:grid;grid-template-columns:1fr 1fr;gap:14px;overflow:auto}
-    .card .f{padding:14px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;background:#f8fbff}
+    .card .b{padding:16px 18px;display:grid;grid-template-columns:1fr 1fr;gap:14px;overflow:auto;flex:1;min-height:0}
+    .card .f{padding:14px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;background:#f8fbff;position:sticky;bottom:0}
     .full{grid-column:1/-1}
     .form-group{display:flex;flex-direction:column;gap:6px}
     .form-group label{font-size:.78rem;font-weight:800;color:#5a6f8f;letter-spacing:.02em;text-transform:uppercase}
@@ -114,7 +121,7 @@
     .picker-item:hover{background:#eef5ff}
 
     @media (max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.grid{grid-template-columns:1fr}.ai-wrap{grid-template-columns:1fr}.settings-grid{grid-template-columns:1fr 1fr}}
-    @media (max-width:860px){.sidebar{position:fixed;left:0;top:64px;bottom:0;transform:translateX(-100%);transition:.2s;z-index:40}.sidebar.open{transform:translateX(0)}.content{padding:10px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.toolbar{grid-template-columns:1fr 1fr}.settings-grid{grid-template-columns:1fr}.card .b{grid-template-columns:1fr}.top-time{display:none}.pagination{flex-direction:column;align-items:flex-start}.table-actions{flex-direction:column}}
+    @media (max-width:860px){.sidebar{position:fixed;left:0;top:64px;bottom:0;transform:translateX(-100%);transition:.2s;z-index:40}.sidebar.open{transform:translateX(0)}.content{padding:10px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.toolbar{grid-template-columns:1fr 1fr}.settings-grid{grid-template-columns:1fr}.card{max-height:calc(100dvh - 16px);border-radius:14px}.card .b{grid-template-columns:1fr}.top-time{display:none}.pagination{flex-direction:column;align-items:flex-start}.table-actions{flex-direction:column}}
   </style>
 </head>
 <body>
@@ -515,7 +522,43 @@
     window.removeOrder=async id=>{const row=ST.orders.find(x=>String(x._localId)===String(id));if(!row){alert('Record not found.');return;} if(!row.id){alert('Cannot delete rows without ID. Please open and save that row first to generate an ID.');return;} if(!confirm('Delete this order?'))return;showBusy('Deleting order...');try{const r=await callApi('deleteOrder',{id:row.id});if(r.status!=='success')return alert(r.message||'Delete failed');await init();}finally{hideBusy();}};
     async function saveOrder(){const record={id:getv('orderId'),orderDate:getv('orderDate'),customerName:getv('customerName'),contactNo:getv('contactNo'),email:getv('email'),emailLink:getv('emailLink'),orderType:getv('orderType'),orderDetails:getv('orderDetails'),totalAmount:getv('totalAmount'),paid:getv('paid')==='true',deadline:getv('deadline'),status:getv('status'),attachments:getv('attachments')}; if(!record.customerName||!record.orderType) return alert('Customer name and order type are required.'); showBusy(record.id?'Updating order...':'Saving order...'); try{const r=await callApi('upsertOrder',{record}); if(r.status!=='success') return alert(r.message||'Save failed'); E.modal.classList.remove('open'); await init();}finally{hideBusy();}}
     async function askAI(){const question=E.chatInput.value.trim(); if(!question) return; addMsg(question,'user'); E.chatInput.value=''; addMsg('Analyzing your data...','ai'); try{const r=await callApi('askAI',{question,model:ST.aiModel,apiKey:ST.aiKey}); E.chatLog.removeChild(E.chatLog.lastChild); if(r.status!=='success') return addMsg(`AI error: ${r.message||'Request failed'}`,'ai'); addMsg(r.answer||'No response.','ai');}catch(err){E.chatLog.removeChild(E.chatLog.lastChild); addMsg(`Error: ${err.message}`,'ai');}}
-    function addMsg(t,w){const d=document.createElement('div');d.className=`bubble ${w}`;d.textContent=t;E.chatLog.appendChild(d);E.chatLog.scrollTop=E.chatLog.scrollHeight}
+    function addMsg(t,w){
+      const d=document.createElement('div');
+      d.className=`bubble ${w}`;
+      if(w==='ai'){
+        d.innerHTML=`<div class="ai-title">Assistant</div><div class="ai-body">${formatAiMessage(t)}</div>`;
+      } else {
+        d.textContent=t;
+      }
+      E.chatLog.appendChild(d);
+      E.chatLog.scrollTop=E.chatLog.scrollHeight;
+    }
+    function formatAiMessage(input){
+      const raw=String(input||'').replace(/\r/g,'').trim();
+      if(!raw) return '';
+      const token='__BOLD__';
+      const protectedText=raw.replace(/\*\*([^*]+)\*\*/g,`${token}$1${token}`);
+      const normalized=protectedText
+        .replace(/\\\$/g,'$')
+        .replace(/\s-\s/g,'\n- ')
+        .replace(/\n{3,}/g,'\n\n');
+      const toHtml=(s)=>esc(String(s||'')).replace(new RegExp(token+'([^_]+)'+token,'g'),'<b>$1</b>');
+      const lines=normalized.split('\n').map(x=>x.trim()).filter(Boolean);
+      const hasBullets=lines.some(x=>x.startsWith('- '));
+      if(!hasBullets) return toHtml(normalized).replace(/\n/g,'<br>');
+      let out='',open=false;
+      lines.forEach(line=>{
+        if(line.startsWith('- ')){
+          if(!open){out+='<ul>';open=true;}
+          out+=`<li>${toHtml(line.slice(2))}</li>`;
+        } else {
+          if(open){out+='</ul>';open=false;}
+          out+=`<div>${toHtml(line)}</div>`;
+        }
+      });
+      if(open) out+='</ul>';
+      return out;
+    }
 
     function pill(v){const label=String(v||'').trim()||'Pending';const s=label.toLowerCase();let c='p-progress';if(s.includes('pending'))c='p-pending';if(s.includes('ready'))c='p-ready';if(s.includes('done'))c='p-done';return `<span class="pill ${c}">${esc(label)}</span>`}
     function isMeaningfulLabel(v){const s=String(v||'').trim().toLowerCase();return !!s && s!=='unknown' && s!=='n/a' && s!=='na' && s!=='null' && s!=='undefined';}
